@@ -14,22 +14,34 @@ class EmprunterPage extends StatefulWidget {
 }
 
 class _EmprunterPageState extends State<EmprunterPage> {
-  String? materielId;
-  bool produitFound = false;
-  Map<String, dynamic>? _produitData;
   TextEditingController _idController = TextEditingController();
-  bool empruntValide = false;
-  int etudiantId = 71;
+
+  String? materielId;
   String? scannedQRCode;
+  String apiMateriel = "";
+  String apiUser = "";
+  int etudiantId = 1;
+
+  bool produitFound = false;
+  bool empruntValide = false;
+
+  Map<String, dynamic>? _produitData;
+
+  var date = DateTime.now().add(const Duration(days: 0)).toIso8601String();
 
   @override
   void initState() {
     super.initState();
   }
 
+  calcul() {
+    apiMateriel = "/Qrent/public/api/materiels/$materielId";
+    apiUser = "/Qrent/public/api/users/$etudiantId";
+    date = formatCurrentDate();
+  }
+
   fetchProduit(String id) async {
     try {
-      print(id);
       final response = await http.get(
         Uri.parse(
             'https://s3-4295.nuage-peda.fr/Qrent/public/api/materiels/$id'),
@@ -37,8 +49,10 @@ class _EmprunterPageState extends State<EmprunterPage> {
       if (response.statusCode == 200) {
         setState(() {
           _produitData = convert.jsonDecode(response.body);
+          materielId = _produitData!['id'].toString();
           produitFound = true;
           materielId = id;
+          calcul();
         });
       } else {
         setState(() {
@@ -52,28 +66,30 @@ class _EmprunterPageState extends State<EmprunterPage> {
     }
   }
 
+  String formatCurrentDate() {
+    DateTime now = DateTime.now().toUtc();
+    String formattedDateEmprunt = "${now.toIso8601String().substring(0, 23)}Z";
+    return formattedDateEmprunt;
+  }
+
   Future<http.Response> validerEmprunt(
-      int produitId, int etudiantId, String dateRetour) {
+      String apiMateriel, String apiUser, date) {
     return http.post(
-      Uri.parse('https://s3-4295.nuage-peda.fr/Qrent/public/api/emprunts/'),
+      Uri.parse('https://s3-4295.nuage-peda.fr/Qrent/public/api/emprunts'),
       headers: <String, String>{'Content-Type': 'application/ld+json'},
       body: convert.jsonEncode({
-        'produit': produitId,
-        'etudiant': etudiantId,
-        'dateEmprunt': DateTime.now().toIso8601String(),
-        'dateRetour': dateRetour,
-        'status': true,
+        'materiel': apiMateriel,
+        'user': apiUser,
+        'dateEmprunt': date,
+        'dateRetour': date,
+        'statut': true,
       }),
     );
   }
 
   Future<void> enregistrerEmprunt() async {
     if (_produitData != null) {
-      var produitId = _produitData!['@id'];
-      var dateRetour =
-          DateTime.now().add(const Duration(days: 0)).toIso8601String();
-
-      var response = await validerEmprunt(produitId, etudiantId, dateRetour);
+      var response = await validerEmprunt(apiMateriel, apiUser, date);
 
       if (response.statusCode == 201) {
         setState(() {
@@ -86,6 +102,7 @@ class _EmprunterPageState extends State<EmprunterPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Erreur lors de l'emprunt")),
         );
+
         setState(() {
           empruntValide = false;
         });
@@ -96,6 +113,7 @@ class _EmprunterPageState extends State<EmprunterPage> {
       );
     }
   }
+
   /*
   Future<void> _scanQRCode() async {
     setState(() {
