@@ -24,7 +24,7 @@ class _MyHomePageState extends State<MyHomePage> {
             Navigator.pushNamed(context, '/accueil');
           },
           child: const Text(
-            "Accueil",
+            "Se connecter ",
             style: TextStyle(fontSize: 20),
           ),
         ),
